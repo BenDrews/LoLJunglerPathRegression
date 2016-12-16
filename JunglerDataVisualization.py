@@ -113,6 +113,7 @@ def buildClusters(fileID):
 	return clusters
 
 def drawClusters(clusters, champ, colors):	
+
 	# get base map as output image
 	outName = "img/" + champ + "_Method"+str(DRAW_METHOD)+".png"
 	outImage = Image.open(MAP_FILE)
@@ -143,6 +144,11 @@ if __name__ == "__main__":
 
 	for i in range(len(fileIDs)):
 		clusters = buildClusters(fileIDs[i])
+
+		# print data to stick in scatterplot
+		for clus in clusters:
+			print(str(clus[1]) + "\t" + str(clus[2]))
+
 		if DRAW_METHOD == 0:
 			clusters = clusters[:3] + clusters[len(clusters)-3:]
 		elif DRAW_METHOD == 1:
