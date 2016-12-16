@@ -6,21 +6,31 @@ import sys
 
 DATA_SCALE = (14820, 14881)
 IMG_SCALE = (2430, 2430)
-PT_RADIUS = 40
+PT_RADIUS = 30
 LINE_WIDTH = 15
+MAP_FILE = "img/util/mapLg.png"
+
+# 0 = top3/bottom3 winrate clusters; 1 = top6 weighted clusters
+DRAW_METHOD = 0
 
 def scale(val, src, dst):
 	return ((val[0]*dst[0])/src[0], (val[1]*dst[1])/src[1])
 def winRateKey(cluster):
 	return cluster[1]
+def weightKey(cluster):
+	return cluster[2]
 
-def buildClusters():
-	clusterFile = codecs.open('output/cluster_200_20_6_5_254', encoding='utf-8')
-	weightFile = codecs.open('output/weights_200_20_6_5_254', encoding='utf-8')
+keyFuncs = [winRateKey, weightKey]
+
+# builds list of clusters; each is a 3-tuple with list of 5 image-scaled coordinates, winrate for cluster, and avg weight of cluster
+def buildClusters(fileID):
+	clusterFile = codecs.open('output/cluster_200_' + fileID, encoding='utf-8')
+	weightFile = codecs.open('output/weights_200_' + fileID, encoding='utf-8')
 
 	rawClusters = json.load(clusterFile)
 	dataWeights = json.load(weightFile);
 
+	# calculate cumulative average weights of each cluster
 	clusterWeights = [0 for x in range(len(rawClusters))];
 	for dp in dataWeights:
 		for i in range(len(clusterWeights)):
@@ -28,43 +38,93 @@ def buildClusters():
 	for i in range(len(clusterWeights)):
 		clusterWeights[i] = clusterWeights[i]/len(clusterWeights)
 
+	# build result cluster list
 	clusters = []
 	for i in range(len(rawClusters)):
 		clus = rawClusters[i]
-		clusters += [(([scale((pt['x'], pt['y']), DATA_SCALE, IMG_SCALE) for pt in clus[:len(clus)-2]], clus[len(clus)-1], clusterWeights[i]))]
-	clusters = sorted(clusters, key=winRateKey)
+		clusters += [(
+			# image-scaled coordinate list
+			[scale((pt['x'], pt['y']), DATA_SCALE, IMG_SCALE) for pt in clus[:len(clus)-2]], 
+			# cluster winrate
+			clus[len(clus)-1], 
+			# cluster weight
+			clusterWeights[i])]
+	
 
+
+	# sort clusters by appropriate method
+	clusters = sorted(clusters, key=keyFuncs[DRAW_METHOD])
+	
 	print(len(clusters))
 	return clusters
 
-def drawClusters(clusters, outName):	
-
+def drawClusters(clusters, champ, colors):	
 	outImage = Image.new('RGBA', IMG_SCALE, (0, 0, 0, 0))
 	draw = ImageDraw.Draw(outImage)
 
 	redness = 0;
-	for clus in clusters[:3] + clusters[len(clusters)-3:]:
-		print("lol");
+	for i in range(len(clusters)):
+		clus = clusters[i]
+
 		tempImage = Image.new('RGBA', IMG_SCALE, (0, 0, 0, 0))
 		tempDraw = ImageDraw.Draw(tempImage)
 
-		color = (255, 255-redness, 255-redness, 230)
-		ptColor = (color[0], color[1], color[2], 230)
+		color = colors[i] + (230,)
 		tempDraw.line(clus[0], color, LINE_WIDTH)
 		for pt in clus[0]:
-			tempDraw.ellipse([pt[0]-PT_RADIUS, pt[1]-PT_RADIUS, pt[0]+PT_RADIUS, pt[1]+PT_RADIUS], ptColor, ptColor)
+			tempDraw.ellipse([pt[0]-PT_RADIUS, pt[1]-PT_RADIUS, pt[0]+PT_RADIUS, pt[1]+PT_RADIUS], color, color)
 
 		outImage.paste(tempImage,(0, 0),tempImage)
 		redness = redness + int((1/6)*255)
 	
-
+	outName = "img/" + champ + "_Method"+str(DRAW_METHOD)+".png"
 	outImage = outImage.transpose(Image.FLIP_TOP_BOTTOM)
-	outImage.save(outName)
+	mapImage = Image.open(MAP_FILE)
+	mapImage.paste(outImage, (0, 0), outImage)
+	mapImage.save(outName)
 
 
 if __name__ == "__main__":
-	if len(sys.argv) < 2:
-		raise Exception("Specify output file name in args")
-	clusters = buildClusters()
-	drawClusters(clusters, sys.argv[1])
+	fileIDs = [
+	"19_6_5",
+	"20_6_5_254",
+	"20_6_5_102",
+	"20_6_5_120",
+	"20_6_5_121"
+	]
+	champs = [
+	"LeeSin",
+	"Vi",
+	"Shyvana",
+	"Hecarim",
+	"KhaZix"
+	]
+
+	if (len(sys.argv) > 1):
+		DRAW_METHOD = int(sys.argv[1])
+
+	for i in range(len(fileIDs)):
+		clusters = buildClusters(fileIDs[i])
+		colors = 0;
+		if DRAW_METHOD == 0:
+			clusters = clusters[:3] + clusters[len(clusters)-3:]
+			colors = [
+			(255, 0, 0),
+			(255, 100, 0),
+			(255, 200, 0),
+			(200, 255, 0),
+			(100, 255, 0),
+			(0, 255, 0),		
+			]
+		elif DRAW_METHOD == 1:
+			clusters = clusters[:6]
+			colors = [
+			(255, 255, 255),	
+			(255, 205, 255),
+			(255, 155, 255),
+			(255, 105, 255),
+			(255, 55, 255),
+			(255, 5, 255),	
+			]
+		drawClusters(clusters, champs[i], colors)
 
