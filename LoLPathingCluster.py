@@ -6,11 +6,13 @@ import sys
 import math
 import codecs
 
-TIMELINE_CUTOFF = 10
-FUZZY_INDEX = 2
+TIMELINE_CUTOFF = 5
+FUZZY_INDEX = 1.5
 EPSILON = 1
 TEAM = 100
-DATA_CUTOFF = 10000
+DATA_CUTOFF = 1000
+FOUNTAIN_POSITION = {'x':0, 'y':0}
+CHAMPION = 64
 
 def getPositionMatrix():
 
@@ -36,7 +38,7 @@ def getPositionMatrix():
                 #Find the junglers in the game
                 participantArray = matchData['participants']
                 for participant in participantArray:
-                    if participant['timeline']['lane'] == "JUNGLE" and participant['teamId'] == TEAM:
+                    if participant['timeline']['lane'] == "JUNGLE" and participant['teamId'] == TEAM and participant['championId'] == CHAMPION:
                         frameArray = matchData['timeline']['frames']
 
                         #Only include matches that last at least through the early game
@@ -58,7 +60,7 @@ def getPositionMatrix():
                             if junglerFrame.has_key('position'):
                                 junglerPositions.append(junglerFrame['position'])
                             else:
-                                junglerPositions.append({"x": -1, "y": -1})
+                                junglerPositions.append(FOUNTAIN_POSITION)
                         junglerPositions.append(participant['stats']['winner'])
                         positionMatrix.append(junglerPositions)
                         if len(positionMatrix) >= DATA_CUTOFF:
@@ -69,9 +71,8 @@ def getPositionMatrix():
 
 def distance(l1, l2):
     sqrdDist = 0
-    for item1 in l1:
-        for item2 in l2:
-            sqrdDist += math.pow(pointDistance(item1, item2), 2)
+    for i in range(0, len(l1) - 1):
+        sqrdDist += math.pow(pointDistance(l1[i], l2[i]), 2)
 
     return math.sqrt(sqrdDist)
 
@@ -89,27 +90,29 @@ def initializeWeights(dataCount, clusterCount):
         weightMatrix.append(weightArray)
     return weightMatrix
 
-def initializeCentroids(clusterCount):
+def initializeCentroids(positionMatrix, clusterCount):
     centroidMatrix = []
     for i in range(0, clusterCount):
-        centroidArray = []
-        for j in range(0, TIMELINE_CUTOFF):
-            centroidArray.append({'x':0.0, 'y':0.0})
-        centroidMatrix.append(centroidArray)
+        centroidMatrix.append(positionMatrix[random.randint(0, len(positionMatrix) - 1)])
     return centroidMatrix
 
 def updateWeights(positionMatrix, centroidMatrix, clusterCount):
     weightMatrix = []
-    for i in range(0, len(positionMatrix)):
-        print('Updating weights (' + str(i) + '/' + str(len(positionMatrix)) + ')')
+    for i in range(0, len(positionMatrix) - 1):
+        print('Updating weights (' + str(i) + '/' + str(len(positionMatrix) - 1) + ')')
         weightArray = []
         posData = positionMatrix[i]
         for j in range(0, clusterCount):
             invWeight = 0
             distFromCurrent = distance(posData, centroidMatrix[j])
             for k in range(0, clusterCount):
-                invWeight += math.pow(distFromCurrent / distance(posData, centroidMatrix[k]), 2/(FUZZY_INDEX - 1))
-            weightArray.append(1/invWeight)
+                if(distance(posData, centroidMatrix[k]) < EPSILON):
+                    invWeight += math.pow(distFromCurrent / EPSILON, 2/(FUZZY_INDEX - 1))
+                else:
+                    invWeight += math.pow(distFromCurrent / distance(posData, centroidMatrix[k]), 2/(FUZZY_INDEX - 1))
+            if(invWeight < EPSILON):
+                invWeight = EPSILON
+            weightArray.append(1.0/invWeight)
         weightMatrix.append(weightArray)
     return weightMatrix
 
@@ -118,22 +121,46 @@ def updateCentroids(positionMatrix, weightMatrix, clusterCount):
     for j in range(0, clusterCount):
         print('Updating cluster (' + str(j) + '/' + str(clusterCount) + ')')
         centroidArray = []
-        for k in range(0, TIMELINE_CUTOFF):
-            centroidNum = {'x':0.0, 'y':0.0}
-            centroidDenom = 0.0
-            for i in range(0, len(positionMatrix)):
-                centroidWeight = pow(weightMatrix[i][j], FUZZY_INDEX)
-                centroidNum['x'] += centroidWeight * positionMatrix[i][k]['x']
-                centroidNum['y'] += centroidWeight * positionMatrix[i][k]['y']
-                centroidDenom += centroidWeight
+        centroidNum = [{'x':0.0, 'y':0.0} for x in range(0, TIMELINE_CUTOFF)]
+        centroidDenom = 0.0
+        winRateNum = 0.0
 
-            centroidArray.append({'x':centroidNum['x'] / centroidDenom, 'y':centroidNum['y'] / centroidDenom })
+        for i in range(0, len(positionMatrix) - 1):
+            centroidWeight = pow(weightMatrix[i][j], FUZZY_INDEX)
+            centroidDenom += centroidWeight
+            winRateNum += positionMatrix[i][TIMELINE_CUTOFF] * centroidWeight
+
+            for k in range(0, TIMELINE_CUTOFF):
+                centroidNum[k]['x'] += centroidWeight * positionMatrix[i][k]['x']
+                centroidNum[k]['y'] += centroidWeight * positionMatrix[i][k]['y']
+        
+        for k in range(0, TIMELINE_CUTOFF):
+            centroidArray.append({'x':centroidNum[k]['x'] / centroidDenom, 'y':centroidNum[k]['y'] / centroidDenom })
+
+        centroidArray.append(winRateNum / centroidDenom)
         centroidMatrix.append(centroidArray)
+
     return centroidMatrix
+
+def cullClusters(weightMatrix, centroidMatrix, clusterCount):
+    j = 0
+    while j < clusterCount:
+        k = j + 1
+        while k < clusterCount:
+            if distance(centroidMatrix[j], centroidMatrix[k]) < EPSILON:
+                print 'CULLING CLUSTER'
+                clusterCount -= 1
+                centroidMatrix.pop(k)
+                for i in range(0, len(weightMatrix)):
+                    weightMatrix[i].pop(k)
+                k -= 1
+            k += 1
+        j += 1
+    return clusterCount
 
 def objectiveFunction(positionMatrix, weightMatrix, centroidMatrix, clusterCount):
     objective = 0
-    for i in range(0, len(positionMatrix)):
+    for i in range(0, len(positionMatrix) - 1):
         for j in range(0, clusterCount):
             objective += pow(weightMatrix[i][j], FUZZY_INDEX) * pow(distance(positionMatrix[i], centroidMatrix[j]), 2)
     print('Objective is currently:' + str(objective))
@@ -142,26 +169,28 @@ def objectiveFunction(positionMatrix, weightMatrix, centroidMatrix, clusterCount
 def makeClusters(clusterCount):
     positionMatrix = getPositionMatrix()
 
-    weightMatrix = initializeWeights(len(positionMatrix), clusterCount)
-
-    centroidMatrix = initializeCentroids(clusterCount)
-
+    centroidMatrix = initializeCentroids(positionMatrix, clusterCount)
+                                 
     newEval = -2.0 * EPSILON
     oldEval = 0.0
     while(math.fabs(newEval - oldEval) > EPSILON):
         oldEval = newEval
-        centroidMatrix = updateCentroids(positionMatrix, weightMatrix, clusterCount)
+
         weightMatrix = updateWeights(positionMatrix, centroidMatrix, clusterCount)
+        centroidMatrix = updateCentroids(positionMatrix, weightMatrix, clusterCount)
+
+        clusterCount = cullClusters(weightMatrix, centroidMatrix, clusterCount)
+
         newEval = objectiveFunction(positionMatrix, weightMatrix, centroidMatrix, clusterCount)
 
-    with open('clusters_' + str(len(positionMatrix)) + '_' + str(clusterCount), 'wb') as outfile:
-        json.dump(centroidMatrix, outfile)
+    with open('output/cluster', 'wb') as outfile:
+        json.dump(centroidMatrix, outfile, indent = 4, separators=(',', ':'))
 
-    with open('weights_' + str(len(positionMatrix)) + '_' + str(clusterCount), 'wb') as outfile:
-        json.dump(weightMatrix, outfile)
+    with open('output/weights', 'wb') as outfile:
+        json.dump(weightMatrix, outfile, indent = 4, separators=(',', ':'))
 
-    with open('positions_' + str(len(positionMatrix)) + '_' + str(clusterCount), 'wb') as outfile:
-        json.dump(positionMatrix, outfile)
+    with open('output/positions', 'wb') as outfile:
+        json.dump(positionMatrix, outfile, indent = 4, separators=(',', ':'))
     
 
 if __name__ == "__main__":
