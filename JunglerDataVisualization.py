@@ -4,10 +4,11 @@ JunglerDataVisualization.py
 Uses cluster data (centroids+winrates) and datapoint-cluster-weights matrix to 
 visualize effectiveness of jungler paths for various champions.
 
-Run `python JunglerDataVisualization.py 0` to generate bottom3/top3 cluster maps for each champion
+Run `python JunglerDataVisualization.py 0` to generate bottom3/top3 winrate cluster maps for each champion
 Run `python JunglerDataVisualization.py 1` to generate top6 avg weighted cluster maps for each champion
+Both will print a table of winrate to avg weight for each cluster for each champion
 
-(c) Gary Chen 2016 - CSCI 373 AI, Prof. Jon Park
+(c) Gary Chen, Ben Drews, Justin Smilan 2016 - CSCI 373 AI, Prof. Jon Park
 '''
 from PIL import Image, ImageDraw
 import json
@@ -31,8 +32,9 @@ champs = [
 	"KhaZix"
 	]
 
-# Color values to use to draw data
+# Color gradients to use to draw data (indexed by method #)
 colors = [[
+	# red-yellow-green
 	(255, 0, 0),
 	(255, 100, 0),
 	(255, 200, 0),
@@ -40,6 +42,7 @@ colors = [[
 	(100, 255, 0),
 	(0, 255, 0),		
 	],[
+	# scale of white to  purple
 	(255, 255, 255),	
 	(255, 205, 255),
 	(255, 155, 255),
@@ -56,24 +59,28 @@ IMG_SCALE = (2430, 2430)
 PT_RADIUS = 30
 # width of draw lines (px)
 LINE_WIDTH = 15
-# transparency level (0-255)
+# transparency level of drawn elements (0-255)
 DRAW_ALPHA = 230
 # path to map file to overlay data on
 MAP_FILE = "img/util/mapLg.png"
 
 # Default draw method
-# 0 = top3/bottom3 winrate clusters; 1 = top6 weighted clusters
+# 0 = top3/bottom3 winrate clusters
+# 1 = top6 weighted clusters
 DRAW_METHOD = 0
 
-
+# helper fn to scale xy tuple val from src to dst scale
 def scale(val, src, dst):
 	return ((val[0]*dst[0])/src[0], (val[1]*dst[1])/src[1])
 
+# key fns to use when sorting
 def winRateKey(cluster):
 	return cluster[1]
 def weightKey(cluster):
 	return cluster[2]
+# list of key fns, indexed by method #
 keyFuncs = [winRateKey, weightKey]
+
 
 # builds list of clusters; each is a 3-tuple with list of 5 image-scaled coordinates, winrate for cluster, and avg weight of cluster
 def buildClusters(fileID):
@@ -112,6 +119,7 @@ def buildClusters(fileID):
 	#print(len(clusters))
 	return clusters
 
+# draws pretty stuff
 def drawClusters(clusters, champ, colors):	
 
 	# get base map as output image
@@ -153,5 +161,5 @@ if __name__ == "__main__":
 			clusters = clusters[:3] + clusters[len(clusters)-3:]
 		elif DRAW_METHOD == 1:
 			clusters = clusters[:6]
-		drawClusters(clusters, champs[i], colors[DRAW_METHOD])
 
+		drawClusters(clusters, champs[i], colors[DRAW_METHOD])
