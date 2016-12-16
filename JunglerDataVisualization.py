@@ -89,8 +89,8 @@ def buildClusters(fileID):
 		for i in range(len(clusterWeights)):
 			clusterWeights[i] += dp[i]
 	for i in range(len(clusterWeights)):
-		# divide all sums by num of clusters
-		clusterWeights[i] = clusterWeights[i]/len(clusterWeights)
+		# divide all sums by num of datapoints
+		clusterWeights[i] = clusterWeights[i]/len(dataWeights)
 
 	# build result cluster list
 	clusters = []
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
 		# print data to stick in scatterplot
 		for clus in clusters:
-			print(str(clus[1]) + "\t" + str(clus[2]))
+			print(str(clus[1]) + " " + str(clus[2]))
 
 		if DRAW_METHOD == 0:
 			clusters = clusters[:3] + clusters[len(clusters)-3:]
