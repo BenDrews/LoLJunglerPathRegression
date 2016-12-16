@@ -6,6 +6,8 @@ visualize effectiveness of jungler paths for various champions.
 
 Run `python JunglerDataVisualization.py 0` to generate bottom3/top3 cluster maps for each champion
 Run `python JunglerDataVisualization.py 1` to generate top6 avg weighted cluster maps for each champion
+
+(c) Gary Chen 2016 - CSCI 373 AI, Prof. Jon Park
 '''
 from PIL import Image, ImageDraw
 import json
