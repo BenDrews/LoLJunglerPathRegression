@@ -1,0 +1,3 @@
+Method 0 is bottom3/top3 clusters by winrate on red to green scale; green is top winrate.
+
+Method 1 is top 6 average weighted clusters over all datapoints.
