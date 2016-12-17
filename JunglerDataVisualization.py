@@ -4,10 +4,13 @@ JunglerDataVisualization.py
 Uses cluster data (centroids+winrates) and datapoint-cluster-weights matrix to 
 visualize effectiveness of jungler paths for various champions.
 
-Run `python JunglerDataVisualization.py 0` to generate bottom3/top3 winrate cluster maps for each champion
-Run `python JunglerDataVisualization.py 1` to generate top6 avg weighted cluster maps for each champion
-Both will print a table of winrate to avg weight for each cluster for each champion
-
+This script will generate:
+	1. For each champion, a map with the paths representing the top 3 and bottom 3 win rate clusters
+	2. For each chapmion, a map the paths representing the top 6 weighted clusters over all datapoints
+	3. A map with a hand-curated selection of one relatively successful and popular  path/cluster for each champion
+	4. A table (output to stdout) with every cluster's winrate and average weight.  Will be in order of chapmion
+	   list, and by ascending winrate within each cluster.
+	
 (c) Gary Chen, Ben Drews, Justin Smilan 2016 - CSCI 373 AI, Prof. Jon Park
 '''
 from PIL import Image, ImageDraw
