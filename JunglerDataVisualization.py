@@ -49,6 +49,13 @@ colors = [[
 	(255, 105, 255),
 	(255, 55, 255),
 	(255, 5, 255),	
+	],[
+	# different color for each champion (corresponds to scatterplot)
+	(72, 133, 237),
+	(219, 50, 54),
+	(244, 194, 13),
+	(60, 186, 84),
+	(153, 0, 153)
 	]]
 
 # xy scale of player positions
@@ -62,12 +69,7 @@ LINE_WIDTH = 15
 # transparency level of drawn elements (0-255)
 DRAW_ALPHA = 230
 # path to map file to overlay data on
-MAP_FILE = "img/util/mapLg.png"
-
-# Default draw method
-# 0 = top3/bottom3 winrate clusters
-# 1 = top6 weighted clusters
-DRAW_METHOD = 0
+MAP_FILE = "img/util/mapLgGs.png"
 
 # helper fn to scale xy tuple val from src to dst scale
 def scale(val, src, dst):
@@ -120,10 +122,9 @@ def buildClusters(fileID):
 	return clusters
 
 # draws pretty stuff
-def drawClusters(clusters, champ, colors):	
+def drawClusters(clusters, filename, colors):	
 
 	# get base map as output image
-	outName = "img/" + champ + "_Method"+str(DRAW_METHOD)+".png"
 	outImage = Image.open(MAP_FILE)
 
 	for i in range(len(clusters)):
@@ -141,25 +142,36 @@ def drawClusters(clusters, champ, colors):
 		tempImage = tempImage.transpose(Image.FLIP_TOP_BOTTOM)
 		outImage.paste(tempImage,(0, 0),tempImage)
 	
-	outImage.save(outName)
+	outImage.save(filename)
 
 
 if __name__ == "__main__":
 
-	# override default draw method if one specified in args
-	if (len(sys.argv) > 1):
-		DRAW_METHOD = int(sys.argv[1])
+	# will hold clusters for all champions
+	clusters = []
 
+	# for each champion:
 	for i in range(len(fileIDs)):
-		clusters = buildClusters(fileIDs[i])
+		clusters = clusters + [buildClusters(fileIDs[i])]
 
 		# print data to stick in scatterplot
-		for clus in clusters:
+		for clus in clusters[i]:
 			print(str(clus[1]) + " " + str(clus[2]))
 
-		if DRAW_METHOD == 0:
-			clusters = clusters[:3] + clusters[len(clusters)-3:]
-		elif DRAW_METHOD == 1:
-			clusters = clusters[:6]
+		# draw method 0
+		top3bot3WR = clusters[i][:3] + clusters[i][len(clusters[i])-3:]
+		drawClusters(top3bot3WR, "img/" + champs[i] + "_TopBot3WR.png", colors[0])
 
-		drawClusters(clusters, champs[i], colors[DRAW_METHOD])
+		# draw method 1
+		top6weight = clusters[i][:6]
+		drawClusters(top6weight, "img/" + champs[i] + "_Top6Weight.png", colors[1])
+
+	# draw hand-picked clusters for each champ
+	bestClusters = [
+	clusters[0][18],
+	clusters[1][16],
+	clusters[2][17],
+	clusters[3][19],
+	clusters[4][18]
+	]
+	drawClusters(bestClusters, "img/Best_Paths_Handpicked.png", colors[2])
