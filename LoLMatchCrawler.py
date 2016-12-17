@@ -15,7 +15,7 @@ MATCH_TIMELINE = "&includeTimeline=true"
 API_KEY = "?api_key=3a871ab5-d3ed-4975-9e03-3b0b1165e171"
 
 
-
+#Crawl the riot api for recent match data based on a seed player
 def gatherData():
    summonerQueue = Queue.Queue(maxsize=0)
    summonerQueue.put(DEFAULT_SEED)
