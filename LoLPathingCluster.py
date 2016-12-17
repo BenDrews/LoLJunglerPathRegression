@@ -1,3 +1,17 @@
+'''
+LoLPathingCluster.py
+
+Pulls the targeted jungle path data from the match files stored in the data directory, and
+then creates fuzzy clusters that represent the common paths taken. Output will be written to
+three files in the output directory corresponding to the position data, cluster data, and 
+weight data.
+
+Run `python LoLPathingCluster.py' to create clusters.
+
+Parameters can be changed through their respective constants in the source file.
+
+(c) Gary Chen, Ben Drews, Justin Smilan 2016 - CSCI 373 AI, Prof. Jon Park
+'''
 import json
 import os
 import os.path
@@ -22,7 +36,7 @@ TEAM = 100
 DATA_CUTOFF = 200
 FOUNTAIN_POSITION = {'x':0, 'y':0}
 VALIDATION_COUNT = 5
-CHAMPION = LEE_SIN
+CHAMPION = KHA_ZIX
 
 #Parse the targeted data from the match repository
 def getPositionMatrix():

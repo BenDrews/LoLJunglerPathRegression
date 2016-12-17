@@ -1,3 +1,16 @@
+'''
+LoLMatchCrawler.py
+
+Recursively crawls the Riot Api searching for recent match data based on a seed player.
+
+Due to rate limiting by Riot, games can only be pulled at a rate of 50 matches per minute.
+
+JSON files respresenting the match data will be written to the data directory.
+
+Run `python LoLMatchCrawler.py' to begin gathering data.
+
+(c) Gary Chen, Ben Drews, Justin Smilan 2016 - CSCI 373 AI, Prof. Jon Park
+'''
 import urllib2
 import json
 import time
